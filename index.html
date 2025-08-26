@@ -524,3 +524,24 @@
   </script>
 </body>
 </html>
+function enviarReserva(event) {
+  event.preventDefault();
+
+  const nombre = document.getElementById("nombre").value;
+  const direccion = document.getElementById("direccion").value;
+  const fecha = document.getElementById("fecha").value;
+  const hora = document.getElementById("hora").value;
+  const servicio = document.getElementById("servicio").value;
+
+  const subject = "Nueva reserva de turno";
+  const body = `Hola, quiero reservar:\n
+  Nombre: ${nombre}\n
+  Dirección: ${direccion}\n
+  Fecha: ${fecha}\n
+  Hora: ${hora}\n
+  Servicio: ${servicio}`;
+
+  // abre Gmail (o el cliente de correo predeterminado) con el mail listo
+  window.location.href = `mailto:cacereslin66@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
