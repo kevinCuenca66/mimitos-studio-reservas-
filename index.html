@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reservas – Manicurista & Pedicurista a Domicilio</title>
+  <meta name="description" content="Reserva online de turnos para manicura y pedicura a domicilio." />
+  <style>
+    :root{
+      --bg:#0f1320;/* fondo oscuro elegante */
+      --card:#151a2b;
+      --muted:#8a90a5;
+      --text:#e7eaf3;
+      --accent:#6c8cff;/* azul violeta */
+      --accent-2:#a08bff;/* lila */
+      --ok:#1ec28b;
+      --warn:#ffcc66;
+      --danger:#ff6b6b;
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:linear-gradient(160deg,#0f1320 0%,#12162a 60%,#191f36 100%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif}
+    a{color:var(--accent)}
+    .container{max-width:1100px;margin:32px auto;padding:0 16px}
+    header{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;margin-bottom:20px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 30% 30%,var(--accent),var(--accent-2));box-shadow:0 8px 20px rgba(108,140,255,.35)}
+    h1{font-size:clamp(20px,4vw,28px);margin:0;font-weight:700}
+    .tag{font-size:12px;color:var(--muted)}
+
+    .layout{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+    @media (max-width: 900px){.layout{grid-template-columns:1fr;}}
+
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(6px);border-radius:var(--radius);padding:16px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+    .card h2{font-size:18px;margin:0 0 12px}
+
+    /* Calendar header */
+    .cal-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .cal-controls{display:flex;align-items:center;gap:8px}
+    select, input, button, textarea{background:#0e1221;color:var(--text);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font-size:14px;outline:none}
+    select:focus,input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,140,255,.25)}
+    .btn{cursor:pointer;transition:all .2s ease}
+    .btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(108,140,255,.25)}
+    .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none}
+    .btn.ghost{background:transparent}
+    .btn.warn{background:var(--warn);color:#1a1d2c;border:none}
+    .btn.ok{background:var(--ok);color:#03160f;border:none}
+    .btn.danger{background:var(--danger);border:none}
+
+    /* Calendar grid */
+    .weekday-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;color:var(--muted);font-size:12px}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .day{aspect-ratio:1/1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;padding:8px;position:relative;cursor:pointer}
+    .day .num{font-weight:600;font-size:13px}
+    .day.disabled{opacity:.35;pointer-events:none}
+    .day.today{outline:2px solid var(--accent);}
+    .day.has-bookings::after{content:"";position:absolute;left:8px;bottom:8px;width:8px;height:8px;border-radius:50%;background:var(--ok)}
+    .legend{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+    .legend span{display:inline-flex;align-items:center;gap:6px}
+    .dot{width:10px;height:10px;border-radius:50%}
+    .dot.ok{background:var(--ok)}
+    .dot.warn{background:var(--warn)}
+
+    /* Timeslots */
+    .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+    .slot{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);text-align:center;cursor:pointer}
+    .slot.booked{opacity:.45;text-decoration:line-through;cursor:not-allowed}
+    .slot.selected{outline:2px solid var(--accent)}
+
+    /* Form */
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .form-grid .full{grid-column:1/-1}
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+
+    /* Listado */
+    .booking-item{display:flex;align-items:center;gap:10px;justify-content:space-between;border:1px dashed rgba(255,255,255,.15);border-radius:12px;padding:10px;margin-bottom:8px}
+    .booking-item small{color:var(--muted)}
+    .empty{color:var(--muted);font-style:italic}
+
+    footer{margin-top:30px;text-align:center;color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Reservá tu turno</h1>
+          <div class="tag">Manicurista & Pedicurista a domicilio</div>
+        </div>
+      </div>
+      <div class="legend card" style="padding:8px 12px;">
+        <span><span class="dot ok"></span>Con reservas</span>
+        <span><span class="dot warn" style="background:var(--warn)"></span>Hoy</span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- Calendario -->
+      <section class="card">
+        <div class="cal-header">
+          <div class="cal-controls">
+            <button class="btn ghost" id="prevMonth" aria-label="Mes anterior">◀</button>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="monthSelect" aria-label="Seleccionar mes"></select>
+              <select id="yearSelect" aria-label="Seleccionar año"></select>
+            </div>
+            <button class="btn ghost" id="nextMonth" aria-label="Mes siguiente">▶</button>
+          </div>
+          <button class="btn" id="todayBtn" title="Ir a hoy">Hoy</button>
+        </div>
+
+        <div class="weekday-row" aria-hidden="true">
+          <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+        </div>
+        <div class="cal-grid" id="calendar" role="grid" aria-label="Calendario de turnos"></div>
+      </section>
+
+      <!-- Selección & Formulario -->
+      <section class="card">
+        <h2>Detalles del turno</h2>
+        <div id="selectedInfo" class="tag" style="margin-bottom:10px">Elegí un día del calendario</div>
+
+        <div style="margin-bottom:10px">
+          <label for="service">Servicio</label>
+          <select id="service">
+            <option value="Manicura Básica">Manicura Básica</option>
+            <option value="Manicura Semipermanente">Manicura Semipermanente</option>
+            <option value="Pedicura Básica">Pedicura Básica</option>
+            <option value="Pedicura Spa">Pedicura Spa</option>
+            <option value="Combo Mani + Pedi">Combo Mani + Pedi</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom:10px">
+          <label>Elegí un horario</label>
+          <div class="slots" id="slots"></div>
+        </div>
+
+        <form id="bookingForm">
+          <div class="form-grid">
+            <div>
+              <label for="name">Nombre y Apellido</label>
+              <input id="name" placeholder="Ej: Ana Pérez" required />
+            </div>
+            <div>
+              <label for="phone">WhatsApp</label>
+              <input id="phone" placeholder="Ej: 11 5555-5555" required />
+            </div>
+            <div class="full">
+              <label for="address">Dirección (a domicilio)</label>
+              <input id="address" placeholder="Calle, número, localidad" required />
+            </div>
+            <div class="full">
+              <label for="notes">Notas (opcional)</label>
+              <textarea id="notes" rows="3" placeholder="Ej: Portero 2B, preferencia de colores..."></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn primary" type="submit">Confirmar reserva</button>
+            <button class="btn warn" type="button" id="clearForm">Limpiar</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Listado de reservas -->
+      <section class="card" style="grid-column:1/-1">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <h2>Próximas reservas</h2>
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost" id="exportCsv">Exportar CSV</button>
+            <button class="btn danger" id="clearAll">Borrar todo</button>
+          </div>
+        </div>
+        <div id="bookingList"></div>
+      </section>
+    </div>
+
+    <footer>
+      <p>© <span id="yearNow"></span> – Manicurista & Pedicurista a Domicilio. Hecho con ♥</p>
+    </footer>
+  </div>
+
+  <script>
+    // —— Utilidades de fecha ——
+    const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const pad = n => n.toString().padStart(2,'0');
+    const fmtDate = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`; // ISO simple
+    const parseISO = (s) => { const [Y,M,D] = s.split('-').map(Number); return new Date(Y, M-1, D); };
+    const isSameDay = (a,b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+
+    // —— Estado ——
+    const state = {
+      viewYear: new Date().getFullYear(),
+      viewMonth: new Date().getMonth(),
+      selectedDate: null,
+      selectedSlot: null,
+      workStart: 9, // 09:00
+      workEnd: 19,  // 19:00
+      slotMins: 60, // 60 minutos por turno
+    };
+
+    // —— Persistencia ——
+    const STORAGE_KEY = 'bookings_v1_manicure_pedicure_dom';
+    const loadBookings = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const saveBookings = (arr) => localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+
+    // —— DOM ——
+    const elMonth = document.getElementById('monthSelect');
+    const elYear = document.getElementById('yearSelect');
+    const elPrev = document.getElementById('prevMonth');
+    const elNext = document.getElementById('nextMonth');
+    const elToday = document.getElementById('todayBtn');
+    const elCal = document.getElementById('calendar');
+    const elSlots = document.getElementById('slots');
+    const elSelectedInfo = document.getElementById('selectedInfo');
+    const yearNow = document.getElementById('yearNow');
+
+    const fName = document.getElementById('name');
+    const fPhone = document.getElementById('phone');
+    const fAddress = document.getElementById('address');
+    const fNotes = document.getElementById('notes');
+    const fService = document.getElementById('service');
+    const bookingForm = document.getElementById('bookingForm');
+    const btnClearForm = document.getElementById('clearForm');
+    const list = document.getElementById('bookingList');
+    const btnClearAll = document.getElementById('clearAll');
+    const btnExportCsv = document.getElementById('exportCsv');
+
+    yearNow.textContent = new Date().getFullYear();
+
+    // Rellenar selects de mes y año (todos los meses y días del año actual por defecto)
+    function initSelectors(){
+      elMonth.innerHTML = MONTHS_ES.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
+      const currentYear = new Date().getFullYear();
+      // Permitimos navegar entre (currentYear-1 .. currentYear+2)
+      const years = [];
+      for(let y=currentYear-1;y<=currentYear+2;y++) years.push(`<option value="${y}">${y}</option>`);
+      elYear.innerHTML = years.join('');
+      elMonth.value = state.viewMonth;
+      elYear.value = state.viewYear;
+    }
+
+    function daysInMonth(year, month){
+      return new Date(year, month+1, 0).getDate();
+    }
+
+    function firstWeekdayIndex(year, month){
+      // Queremos que la cuadrícula comience en Lunes (ES). JS: 0=Dom,1=Lun,...
+      const jsIndex = new Date(year, month, 1).getDay();
+      return (jsIndex === 0) ? 6 : jsIndex - 1; // 0..6 donde 0 es Lunes
+    }
+
+    function getBookingsMap(){
+      const data = loadBookings();
+      const map = new Map();
+      for(const b of data){
+        const key = b.date;
+        if(!map.has(key)) map.set(key, []);
+        map.get(key).push(b);
+      }
+      return map;
+    }
+
+    function renderCalendar(){
+      const {viewYear: Y, viewMonth: M} = state;
+      elMonth.value = M; elYear.value = Y;
+      elCal.innerHTML = '';
+
+      const leading = firstWeekdayIndex(Y, M);
+      const total = daysInMonth(Y, M);
+      const today = new Date();
+      const bookingsMap = getBookingsMap();
+
+      // huecos al inicio
+      for(let i=0;i<leading;i++){
+        const blank = document.createElement('div');
+        blank.className = 'day disabled';
+        elCal.appendChild(blank);
+      }
+
+      for(let d=1; d<=total; d++){
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'day btn';
+        const date = new Date(Y,M,d);
+        const isToday = isSameDay(date,today);
+        if(isToday) cell.classList.add('today');
+
+        const key = fmtDate(Y,M,d);
+        if(getAvailableSlotsCount(date) < getTotalSlotsPerDay()){
+          cell.classList.add('has-bookings');
+        }
+
+        // deshabilitar fechas totalmente pasadas
+        if(date < new Date(today.getFullYear(), today.getMonth(), today.getDate())){
+          cell.classList.add('disabled');
+        }
+
+        const num = document.createElement('div');
+        num.className = 'num';
+        num.textContent = d;
+        cell.appendChild(num);
+
+        cell.addEventListener('click', ()=> selectDate(date));
+        elCal.appendChild(cell);
+      }
+    }
+
+    function getTotalSlotsPerDay(){
+      const {workStart, workEnd, slotMins} = state;
+      const totalMinutes = (workEnd - workStart) * 60;
+      return Math.floor(totalMinutes / slotMins);
+    }
+
+    function allSlotsForDate(date){
+      const {workStart, workEnd, slotMins} = state;
+      const slots = [];
+      for(let h=workStart*60; h<workEnd*60; h+=slotMins){
+        const hour = Math.floor(h/60);
+        const mins = h%60;
+        slots.push(`${pad(hour)}:${pad(mins)}`);
+      }
+      return slots;
+    }
+
+    function getAvailableSlotsCount(date){
+      const all = allSlotsForDate(date);
+      const booked = bookingsForDate(date).map(b=>b.time);
+      return all.filter(t=>!booked.includes(t)).length;
+    }
+
+    function bookingsForDate(date){
+      const key = fmtDate(date.getFullYear(), date.getMonth(), date.getDate());
+      return (getBookingsMap().get(key) || []).sort((a,b)=> a.time.localeCompare(b.time));
+    }
+
+    function selectDate(date){
+      state.selectedDate = date;
+      state.selectedSlot = null;
+      elSelectedInfo.textContent = new Intl.DateTimeFormat('es-AR',{dateStyle:'full'}).format(date);
+      renderSlots();
+    }
+
+    function renderSlots(){
+      elSlots.innerHTML = '';
+      if(!state.selectedDate){
+        elSlots.innerHTML = '<div class="tag">Elegí primero un día</div>';
+        return;
+      }
+      const today = new Date();
+      const list = allSlotsForDate(state.selectedDate);
+      const booked = bookingsForDate(state.selectedDate).map(b=>b.time);
+
+      for(const t of list){
+        const btn = document.createElement('button');
+        btn.type='button';
+        btn.className='slot btn';
+        btn.textContent=t;
+
+        // Deshabilitar si el slot ya se reservó
+        if(booked.includes(t)){
+          btn.classList.add('booked');
+          btn.disabled = true;
+        }
+        // Deshabilitar si es hoy y el horario ya pasó
+        if(isSameDay(state.selectedDate, today)){
+          const [hh,mm] = t.split(':').map(Number);
+          if(hh < today.getHours() || (hh===today.getHours() && mm<=today.getMinutes())){
+            btn.classList.add('booked');
+            btn.disabled = true;
+          }
+        }
+
+        btn.addEventListener('click', ()=>{
+          document.querySelectorAll('.slot.selected').forEach(x=>x.classList.remove('selected'));
+          btn.classList.add('selected');
+          state.selectedSlot = t;
+        });
+        elSlots.appendChild(btn);
+      }
+    }
+
+    // —— Formulario ——
+    bookingForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      if(!state.selectedDate){alert('Elegí un día del calendario.'); return;}
+      if(!state.selectedSlot){alert('Elegí un horario.'); return;}
+      const name = fName.value.trim();
+      const phone = fPhone.value.trim();
+      const address = fAddress.value.trim();
+      if(!name || !phone || !address){ alert('Completá nombre, WhatsApp y dirección.'); return; }
+
+      const dateKey = fmtDate(state.selectedDate.getFullYear(), state.selectedDate.getMonth(), state.selectedDate.getDate());
+      const booking = {
+        id: crypto.randomUUID(),
+        date: dateKey,
+        time: state.selectedSlot,
+        service: fService.value,
+        name, phone, address,
+        notes: fNotes.value.trim()
+      };
+
+      // Evitar dobles reservas del mismo horario/día
+      const existing = loadBookings();
+      if(existing.some(b=> b.date===booking.date && b.time===booking.time)){
+        alert('Ese horario ya fue reservado. Elegí otro.');
+        renderSlots();
+        return;
+      }
+      existing.push(booking);
+      saveBookings(existing);
+
+      alert('¡Reserva confirmada!');
+      bookingForm.reset();
+      state.selectedSlot = null;
+      renderSlots();
+      renderCalendar();
+      renderBookingList();
+    });
+
+    btnClearForm.addEventListener('click', ()=>{
+      bookingForm.reset();
+      state.selectedSlot = null;
+      document.querySelectorAll('.slot.selected').forEach(x=>x.classList.remove('selected'));
+    });
+
+    function renderBookingList(){
+      const data = loadBookings()
+        .slice()
+        .sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
+      list.innerHTML = '';
+      if(data.length===0){ list.innerHTML = '<div class="empty">No hay reservas aún.</div>'; return; }
+
+      for(const b of data){
+        const wrap = document.createElement('div');
+        wrap.className = 'booking-item';
+        const d = parseISO(b.date);
+        const when = `${new Intl.DateTimeFormat('es-AR',{dateStyle:'medium'}).format(d)} · ${b.time} hs`;
+        wrap.innerHTML = `
+          <div>
+            <div><strong>${b.service}</strong> – ${when}</div>
+            <small>${b.name} · ${b.phone} · ${b.address}</small>
+            ${b.notes?`<div class="tag" style="margin-top:4px">${b.notes}</div>`:''}
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn ghost" data-id="${b.id}" data-action="copy">Copiar</button>
+            <button class="btn danger" data-id="${b.id}" data-action="delete">Eliminar</button>
+          </div>
+        `;
+        list.appendChild(wrap);
+      }
+
+      // acciones
+      list.querySelectorAll('button[data-action="delete"]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('data-id');
+          const data = loadBookings().filter(x=>x.id!==id);
+          saveBookings(data);
+          renderBookingList();
+          renderCalendar();
+        });
+      });
+      list.querySelectorAll('button[data-action="copy"]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const id = btn.getAttribute('data-id');
+          const b = loadBookings().find(x=>x.id===id);
+          if(!b) return;
+          const d = parseISO(b.date);
+          const text = `Reserva: ${b.service}\nFecha: ${new Intl.DateTimeFormat('es-AR',{dateStyle:'full'}).format(d)}\nHora: ${b.time} hs\nCliente: ${b.name}\nWhatsApp: ${b.phone}\nDirección: ${b.address}${b.notes?`\nNotas: ${b.notes}`:''}`;
+          try{ await navigator.clipboard.writeText(text); alert('Reserva copiada al portapapeles.'); }catch(e){ alert('No se pudo copiar automáticamente.'); }
+        });
+      });
+    }
+
+    // Exportar CSV
+    btnExportCsv.addEventListener('click', ()=>{
+      const data = loadBookings();
+      const rows = [
+        ['ID','Fecha','Hora','Servicio','Nombre','WhatsApp','Dirección','Notas']
+      ];
+      for(const b of data){ rows.push([b.id,b.date,b.time,b.service,b.name,b.phone,b.address,(b.notes||'').replaceAll('\n',' ')]) }
+      const csv = rows.map(r=> r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'reservas.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Borrar todo
+    btnClearAll.addEventListener('click', ()=>{
+      if(confirm('¿Seguro que querés borrar todas las reservas?')){
+        localStorage.removeItem(STORAGE_KEY);
+        renderBookingList();
+        renderCalendar();
+      }
+    });
+
+    // Navegación del calendario
+    elPrev.addEventListener('click', ()=>{ changeMonth(-1); });
+    elNext.addEventListener('click', ()=>{ changeMonth(1); });
+    elToday.addEventListener('click', ()=>{
+      const now = new Date();
+      state.viewYear = now.getFullYear();
+      state.viewMonth = now.getMonth();
+      renderCalendar();
+      selectDate(now);
+    });
+    elMonth.addEventListener('change', ()=>{ state.viewMonth = +elMonth.value; renderCalendar(); });
+    elYear.addEventListener('change', ()=>{ state.viewYear = +elYear.value; renderCalendar(); });
+
+    function changeMonth(delta){
+      let y = state.viewYear; let m = state.viewMonth + delta;
+      if(m<0){ m=11; y--; } else if(m>11){ m=0; y++; }
+      state.viewYear = y; state.viewMonth = m; renderCalendar();
+    }
+
+    // Inicializar
+    initSelectors();
+    renderCalendar();
+    renderBookingList();
+  </script>
+</body>
+</html>
